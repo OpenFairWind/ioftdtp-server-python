@@ -31,8 +31,9 @@ def create_app():
     # Load default config and override config from an environment variable
     app.config.update(dict(
         DATABASE='mongodb://localhost:27017/',
-        #ALLOWED_EXTENSIONS = set(['json','zip']),
-        ALLOWED_EXTENSIONS = set(['json','json']),
+        DATABASE_NAME='signalk-database',
+        SCHEDULER='/home/ubuntu/dev/torque/sbin/torque-submit',
+        ALLOWED_EXTENSIONS = set(['json']),
         ISSUER="raffaele.montella@gmail.com",
         ISSUER_PASSWORD="Pippo",
         UPLOAD_FOLDER = "UPLOAD_PATH_HERE",
@@ -53,7 +54,13 @@ def processFile(userId, deviceId, filepath):
     #
     print "Unzipping..."
     #'/Users/mario/Desktop/FairWindServer/dev/torque/sbin/torque-submit',
-    p = subprocess.Popen([app.config['UNZIPPER_PATH'], app.config['ISSUER'], app.config['ISSUER_PASSWORD'],str(userId),str(deviceId),str(filepath)], stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+
+    parms=[]
+    if app.config['SCHEDULER'] is not None:
+        params.append(app.config['SCHEDULER'])
+    params.append([app.config['UNZIPPER_PATH'], app.config['ISSUER'], app.config['ISSUER_PASSWORD'],str(userId),str(deviceId),str(filepath)])
+
+    p = subprocess.Popen(params, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
       
     out, err = p.communicate()
     result=json.loads(out)
@@ -62,8 +69,8 @@ def processFile(userId, deviceId, filepath):
     if "success" in result['status']:
         print "Success!"
         if len(result['data'])>0:
-            client = MongoClient('mongodb://localhost:27017/')
-            db = client['fairwind-database']
+            client = MongoClient(app.config['DATABASE_NAME'])
+            db = client[app.config['DATABASE_NAME']]
             signalk = db['signalk']
             print "Adding to mongodb..."
             for data in result['data']:
