@@ -27,40 +27,24 @@ def create_app():
     app = Flask(__name__)
 
     app.config.from_object(__name__)
-
-    # Load default config and override config from an environment variable
-    app.config.update(dict(
-        DATABASE='mongodb://localhost:27017/',
-        DATABASE_NAME='signalk-database',
-        SCHEDULER='/home/ubuntu/dev/torque/sbin/torque-submit',
-        ALLOWED_EXTENSIONS = set(['json']),
-        ISSUER="raffaele.montella@gmail.com",
-        ISSUER_PASSWORD="Pippo",
-        UPLOAD_FOLDER = "UPLOAD_PATH_HERE",
-        UNZIPPER_PATH = "UNZIPPER_PATH_HERE",
-        KEYSGENERATOR_PATH = "KEYSGENERATOR_PATH_HERE",
-        PBK_PATH = "PUBLIC_KEY_PATH_HERE",
-        PRK_PATH = "PRIVATE_KEY_PATH_HERE",
-        SRC_PBK_PATH = "SRC_PUBLIC_KEY_PATH_HERE"))
-    app.config.from_envvar('PORTAL_SETTINGS', silent=True)
-
+    
+    # Load default config and override config from cfg file
+    app.config.from_envvar('YOURAPPLICATION_SETTINGS')
+   
     return app
 
 app=create_app()
 
 def processFile(userId, deviceId, filepath):
-    # 
     print "./fairwind-unzip raffaele.montella@gmail Pippo "+str(userId)+" "+str(deviceId)+" "+str(filepath)
-    #
     print "Unzipping..."
-    #'/Users/mario/Desktop/FairWindServer/dev/torque/sbin/torque-submit',
 
-    parms=[]
+    params=[]
     if app.config['SCHEDULER'] is not None:
         params.append(app.config['SCHEDULER'])
-    params.append([app.config['UNZIPPER_PATH'], app.config['ISSUER'], app.config['ISSUER_PASSWORD'],str(userId),str(deviceId),str(filepath)])
+    params.extend((app.config['UNZIPPER_PATH'], app.config['PRK_PATH'], app.config['SRC_PBK_PATH'],str(userId),str(deviceId),str(filepath)))
 
-    p = subprocess.Popen(params, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    p = subprocess.Popen(params, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       
     out, err = p.communicate()
     result=json.loads(out)
@@ -83,7 +67,7 @@ def processFile(userId, deviceId, filepath):
             print "No data to import"
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ['json']
 
 @app.route('/generatekeys', methods=['POST'])
 def generatekeys():
@@ -103,7 +87,7 @@ def generatekeys():
 		# generate destination public and private key if not exist
 		publicKey = None
 		if not os.path.isfile(app.config['PBK_PATH']) or not os.path.isfile(app.config['PRK_PATH']):
-			p = subprocess.Popen(app.config['KEYSGENERATOR_PATH'])
+			p = subprocess.Popen([app.config['KEYSGENERATOR_PATH'],app.config['PRK_PATH'],app.config['PBK_PATH']])
 			p.wait()
 		file = open(app.config['PBK_PATH'], 'r') 
 		publicKey = file.read() 
