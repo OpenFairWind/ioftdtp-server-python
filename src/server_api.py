@@ -53,7 +53,7 @@ def processFile(userId, deviceId, filepath):
     if "success" in result['status']:
         print "Success!"
         if len(result['data'])>0:
-            client = MongoClient(app.config['DATABASE_NAME'])
+            client = MongoClient(app.config['DATABASE'])
             db = client[app.config['DATABASE_NAME']]
             signalk = db['signalk']
             print "Adding to mongodb..."
